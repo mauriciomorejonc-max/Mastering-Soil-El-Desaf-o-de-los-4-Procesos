@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Génesis de Suelos - Simulador Interactivo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f4efe6;
+            color: #2d241e;
+        }
+
+        /* Clay & Earth Theme Colors */
+        .bg-earth-dark { background-color: #3d2b1f; }
+        .bg-earth-primary { background-color: #5c4033; }
+        .bg-earth-clay { background-color: #8b5a2b; }
+        .bg-earth-ochre { background-color: #c2883f; }
+        .bg-earth-sand { background-color: #e8d8b8; }
+        .bg-earth-light { background-color: #f7f3eb; }
+
+        .text-earth-dark { color: #3d2b1f; }
+        .text-earth-clay { color: #8b5a2b; }
+        .text-earth-ochre { color: #b87333; }
+
+        .border-earth-clay { border-color: #8b5a2b; }
+        .border-earth-sand { border-color: #d8c4a0; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1e8d9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8b5a2b;
+            border-radius: 4px;
+        }
+
+        /* Soil Profile Animations */
+        @keyframes rain-fall {
+            0% { transform: translateY(-10px); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(120px); opacity: 0; }
+        }
+        .rain-drop {
+            animation: rain-fall 1.2s infinite linear;
+        }
+
+        @keyframes leaf-fall {
+            0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+            50% { opacity: 1; transform: translateY(30px) rotate(180deg); }
+            100% { transform: translateY(60px) rotate(360deg); opacity: 0; }
+        }
+        .leaf-drop {
+            animation: leaf-fall 2.5s infinite ease-in-out;
+        }
+
+        @keyframes translocate-down {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(70px); opacity: 0.2; }
+        }
+        .translocate-anim {
+            animation: translocate-down 2s infinite ease-in-out;
+        }
+
+        @keyframes transform-pulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.08); filter: brightness(1.2); }
+        }
+        .transform-anim {
+            animation: transform-pulse 1.8s infinite ease-in-out;
+        }
+
+        .active-tab {
+            border-bottom: 3px solid #8b5a2b;
+            color: #3d2b1f;
+            font-weight: 700;
+        }
+
+        .touch-card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .touch-card:active {
+            transform: scale(0.97);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-amber-200">
+
+    <!-- Header Navigation -->
+    <header class="bg-earth-dark text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="p-1.5 bg-amber-600 rounded-lg">
+                    <i data-lucide="layers" class="w-5 h-5 text-amber-100"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base leading-tight tracking-wide">Génesis de Suelos</h1>
+                    <p class="text-xs text-amber-200/80">Edafología Interactiva</p>
+                </div>
+            </div>
+            <div id="user-badge" class="hidden text-right">
+                <span id="header-user-name" class="block text-xs font-bold text-amber-200 truncate max-w-[100px]">Estudiante</span>
+                <span id="header-score" class="text-xs font-bold bg-amber-900/80 text-amber-300 px-2 py-0.5 rounded-full border border-amber-700/50">0 pts</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-md w-full mx-auto p-4 flex flex-col justify-center">
+
+        <!-- SCREEN 1: WELCOME & REGISTRATION -->
+        <section id="screen-welcome" class="space-y-4">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-earth-sand space-y-4 text-center">
+                <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-800">
+                    <i data-lucide="sprout" class="w-9 h-9"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-earth-dark">¡Bienvenido, Edafólogo!</h2>
+                    <p class="text-xs text-gray-600 mt-1">Aprende sobre los 4 procesos pedogenéticos fundamentales mediante desafíos prácticos.</p>
+                </div>
+
+                <!-- Concept Quick Guide Accordion -->
+                <div class="text-left bg-earth-light rounded-xl p-3 border border-amber-200 text-xs space-y-2">
+                    <div class="font-bold text-earth-dark flex items-center gap-1.5 mb-1 text-sm">
+                        <i data-lucide="book-open" class="w-4 h-4 text-amber-700"></i>
+                        <span>Los 4 Procesos Pedogenéticos:</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-white p-2 rounded-lg border border-amber-100 shadow-2xs">
+                            <span class="font-bold text-green-700 block">➕ Adiciones</span>
+                            <span class="text-gray-600 text-[11px] leading-tight block">Ingreso de MO, agua, cenizas, sedimentos al perfil.</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-amber-100 shadow-2xs">
+                            <span class="font-bold text-red-700 block">➖ Pérdidas</span>
+                            <span class="text-gray-600 text-[11px] leading-tight block">Erosión, lixiviación de nutrientes, volatilización.</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-amber-100 shadow-2xs">
+                            <span class="font-bold text-blue-700 block">⬇️ Translocaciones</span>
+                            <span class="text-gray-600 text-[11px] leading-tight block">Movimiento de arcillas o MO entre horizontes (eluviación/iluviación).</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-amber-100 shadow-2xs">
+                            <span class="font-bold text-purple-700 block">🔄 Transformaciones</span>
+                            <span class="text-gray-600 text-[11px] leading-tight block">Meteorización de minerales, humificación, humectación/secado.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registration Form -->
+                <form id="form-register" class="space-y-3 text-left pt-2">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Nombre Completo:</label>
+                        <input type="text" id="input-name" required placeholder="Ej. Maria Elena Torres"
+                            class="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-amber-600 focus:border-amber-600 outline-none text-sm transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Curso / Asignatura / Sección:</label>
+                        <input type="text" id="input-course" required placeholder="Ej. Edafología - Grupo A"
+                            class="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-amber-600 focus:border-amber-600 outline-none text-sm transition">
+                    </div>
+                    <button type="submit" class="w-full bg-earth-clay hover:bg-earth-dark text-white font-bold py-3 px-4 rounded-xl shadow-md active:scale-95 transition flex items-center justify-center gap-2">
+                        <span>Comenzar Experiencia</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- SCREEN 2: LEVEL SELECTOR / HUB -->
+        <section id="screen-hub" class="hidden space-y-4">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-earth-sand text-center space-y-2">
+                <h2 class="text-xl font-bold text-earth-dark">Módulos de Aprendizaje</h2>
+                <p class="text-xs text-gray-600">Completa cada nivel para obtener tu certificación final.</p>
+            </div>
+
+            <div class="space-y-3">
+                <!-- Level 1 Card -->
+                <button onclick="startLevel(1)" class="w-full bg-white p-4 rounded-2xl border-2 border-amber-200 shadow-sm flex items-center space-x-4 text-left touch-card hover:border-amber-500 transition">
+                    <div id="lvl1-badge" class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0 font-bold text-lg">
+                        1
+                    </div>
+                    <div class="flex-grow">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-sm text-gray-900">Clasificación de Escenarios</h3>
+                            <span id="lvl1-status" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Pendiente</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Identifica situaciones de campo y organízalas en los 4 procesos.</p>
+                    </div>
+                </button>
+
+                <!-- Level 2 Card -->
+                <button onclick="startLevel(2)" class="w-full bg-white p-4 rounded-2xl border-2 border-amber-200 shadow-sm flex items-center space-x-4 text-left touch-card hover:border-amber-500 transition">
+                    <div id="lvl2-badge" class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0 font-bold text-lg">
+                        2
+                    </div>
+                    <div class="flex-grow">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-sm text-gray-900">Simulador de Perfil Vivo</h3>
+                            <span id="lvl2-status" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Pendiente</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Observa fenómenos en el perfil dinámico y detecta la fuerza pedogenética.</p>
+                    </div>
+                </button>
+
+                <!-- Level 3 Card -->
+                <button onclick="startLevel(3)" class="w-full bg-white p-4 rounded-2xl border-2 border-amber-200 shadow-sm flex items-center space-x-4 text-left touch-card hover:border-amber-500 transition">
+                    <div id="lvl3-badge" class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0 font-bold text-lg">
+                        3
+                    </div>
+                    <div class="flex-grow">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-sm text-gray-900">Quiz Contrarreloj</h3>
+                            <span id="lvl3-status" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Pendiente</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">Pon a prueba tu agilidad mental con justificaciones científicas.</p>
+                    </div>
+                </button>
+            </div>
+
+            <!-- View Certificate Button (if finished or accessible) -->
+            <button id="btn-view-report" onclick="showResultsScreen()" class="w-full bg-earth-dark text-white py-3 rounded-xl font-bold text-sm shadow flex items-center justify-center gap-2">
+                <i data-lucide="award" class="w-4 h-4"></i>
+                <span>Ver Mi Certificado y Reporte</span>
+            </button>
+        </section>
+
+        <!-- SCREEN 3: LEVEL 1 (CARD CLASSIFICATION) -->
+        <section id="screen-level-1" class="hidden space-y-3">
+            <div class="bg-white p-3 rounded-xl shadow-xs border border-earth-sand flex justify-between items-center">
+                <div>
+                    <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Nivel 1</span>
+                    <h3 class="font-bold text-sm text-gray-800">Clasifica el Evento Pedogenético</h3>
+                </div>
+                <span id="lvl1-progress" class="text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full">1 / 8</span>
+            </div>
+
+            <!-- Active Scenario Card -->
+            <div id="scenario-card" class="bg-white p-5 rounded-2xl shadow-md border-2 border-amber-300 text-center space-y-3 transition-all">
+                <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
+                    <i data-lucide="help-circle" class="w-6 h-6"></i>
+                </div>
+                <p id="scenario-text" class="font-semibold text-gray-800 text-sm leading-relaxed">
+                    Cargando escenario...
+                </p>
+                <p class="text-[11px] text-gray-400 italic">Toca el contenedor al que pertenece esta situación:</p>
+            </div>
+
+            <!-- 4 Target Process Buttons (Tap to place) -->
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+                <button onclick="classifyScenario('Adición')" class="bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-300 p-3 rounded-xl text-left touch-card flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-xs text-emerald-900">ADICIÓN</span>
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-600"></i>
+                    </div>
+                    <span class="text-[10px] text-emerald-700 mt-1">Ingreso de materiales</span>
+                </button>
+
+                <button onclick="classifyScenario('Pérdida')" class="bg-rose-50 hover:bg-rose-100 border-2 border-rose-300 p-3 rounded-xl text-left touch-card flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-xs text-rose-900">PÉRDIDA</span>
+                        <i data-lucide="minus-circle" class="w-4 h-4 text-rose-600"></i>
+                    </div>
+                    <span class="text-[10px] text-rose-700 mt-1">Salida de componentes</span>
+                </button>
+
+                <button onclick="classifyScenario('Translocación')" class="bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 p-3 rounded-xl text-left touch-card flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-xs text-blue-900">TRANSLOCACIÓN</span>
+                        <i data-lucide="arrow-down-up" class="w-4 h-4 text-blue-600"></i>
+                    </div>
+                    <span class="text-[10px] text-blue-700 mt-1">Movimiento interno</span>
+                </button>
+
+                <button onclick="classifyScenario('Transformación')" class="bg-purple-50 hover:bg-purple-100 border-2 border-purple-300 p-3 rounded-xl text-left touch-card flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-xs text-purple-900">TRANSFORMACIÓN</span>
+                        <i data-lucide="refresh-cw" class="w-4 h-4 text-purple-600"></i>
+                    </div>
+                    <span class="text-[10px] text-purple-700 mt-1">Cambio de naturaleza</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- SCREEN 4: LEVEL 2 (SOIL PROFILE SIMULATOR) -->
+        <section id="screen-level-2" class="hidden space-y-3">
+            <div class="bg-white p-3 rounded-xl shadow-xs border border-earth-sand flex justify-between items-center">
+                <div>
+                    <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Nivel 2</span>
+                    <h3 class="font-bold text-sm text-gray-800">Simulador Visual del Perfil</h3>
+                </div>
+                <span id="lvl2-progress" class="text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full">1 / 5</span>
+            </div>
+
+            <!-- Dynamic Soil Profile Canvas/HTML Container -->
+            <div class="bg-stone-900 rounded-2xl p-3 border-2 border-stone-700 relative overflow-hidden shadow-inner min-h-[220px] flex flex-col justify-between">
+                
+                <!-- Overlay Event Animation Layer -->
+                <div id="sim-animation-overlay" class="absolute inset-0 pointer-events-none z-10"></div>
+
+                <!-- Soil Horizons Visual -->
+                <div class="space-y-1 relative z-0 h-full flex flex-col justify-between">
+                    <!-- Horizon O -->
+                    <div class="bg-stone-800/90 border border-stone-600 rounded p-1.5 flex justify-between items-center text-[10px] text-amber-200">
+                        <span class="font-bold">Horizonte O</span>
+                        <span class="text-[9px] text-stone-400">Materia Orgánica / Hojarasca</span>
+                    </div>
+                    <!-- Horizon A -->
+                    <div class="bg-amber-950/80 border border-amber-800 rounded p-2 flex justify-between items-center text-[10px] text-amber-100">
+                        <span class="font-bold">Horizonte A</span>
+                        <span class="text-[9px] text-amber-300/70">Capa Superficial / Humus</span>
+                    </div>
+                    <!-- Horizon B -->
+                    <div class="bg-amber-900/80 border border-amber-700 rounded p-2 flex justify-between items-center text-[10px] text-amber-200">
+                        <span class="font-bold">Horizonte B</span>
+                        <span class="text-[9px] text-amber-400/70">Iluviación / Acumulación</span>
+                    </div>
+                    <!-- Horizon C -->
+                    <div class="bg-stone-700/80 border border-stone-500 rounded p-1.5 flex justify-between items-center text-[10px] text-stone-200">
+                        <span class="font-bold">Horizonte C</span>
+                        <span class="text-[9px] text-stone-400">Roca Madre Regolítica</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simulation Prompt -->
+            <div class="bg-white p-3.5 rounded-xl border border-earth-sand shadow-xs">
+                <p id="sim-description" class="text-xs font-semibold text-gray-800 text-center">
+                    Observa la animación en el perfil. ¿Qué proceso pedogenético está ocurriendo?
+                </p>
+            </div>
+
+            <!-- Selection Options -->
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkSimAnswer('Adición')" class="bg-white border-2 border-stone-200 p-2.5 rounded-xl font-bold text-xs text-gray-700 hover:border-amber-500 touch-card">Adición</button>
+                <button onclick="checkSimAnswer('Pérdida')" class="bg-white border-2 border-stone-200 p-2.5 rounded-xl font-bold text-xs text-gray-700 hover:border-amber-500 touch-card">Pérdida</button>
+                <button onclick="checkSimAnswer('Translocación')" class="bg-white border-2 border-stone-200 p-2.5 rounded-xl font-bold text-xs text-gray-700 hover:border-amber-500 touch-card">Translocación</button>
+                <button onclick="checkSimAnswer('Transformación')" class="bg-white border-2 border-stone-200 p-2.5 rounded-xl font-bold text-xs text-gray-700 hover:border-amber-500 touch-card">Transformación</button>
+            </div>
+        </section>
+
+        <!-- SCREEN 5: LEVEL 3 (QUIZ CONTRARRELOJ) -->
+        <section id="screen-level-3" class="hidden space-y-3">
+            <div class="bg-white p-3 rounded-xl shadow-xs border border-earth-sand flex justify-between items-center">
+                <div>
+                    <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Nivel 3</span>
+                    <h3 class="font-bold text-sm text-gray-800">Desafío Edafológico Rápido</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span id="timer-display" class="text-xs font-bold bg-red-100 text-red-700 px-2 py-1 rounded-md flex items-center gap-1">
+                        <i data-lucide="clock" class="w-3 h-3"></i> <span id="time-left">15</span>s
+                    </span>
+                    <span id="lvl3-progress" class="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">1 / 5</span>
+                </div>
+            </div>
+
+            <!-- Quiz Card -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-earth-sand space-y-3">
+                <h4 id="quiz-question" class="font-bold text-sm text-earth-dark leading-snug">
+                    ¿Pregunta?
+                </h4>
+                <div id="quiz-options" class="space-y-2 pt-1">
+                    <!-- Dynamic Options -->
+                </div>
+            </div>
+        </section>
+
+        <!-- MODAL FEEDBACK (Immediate Pedological Explanation) -->
+        <div id="modal-feedback" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white max-w-sm w-full rounded-2xl p-5 shadow-2xl space-y-3 border-2 border-earth-sand text-center transform transition-all scale-95">
+                <div id="feedback-icon-container" class="w-12 h-12 rounded-full mx-auto flex items-center justify-center">
+                    <i id="feedback-icon" data-lucide="check" class="w-6 h-6"></i>
+                </div>
+                <h3 id="feedback-title" class="text-lg font-bold">¡Correcto!</h3>
+                <p id="feedback-text" class="text-xs text-gray-600 leading-relaxed text-left bg-stone-50 p-3 rounded-xl border border-stone-200">
+                    Explicación edafológica...
+                </p>
+                <button onclick="nextQuestion()" class="w-full bg-earth-clay text-white font-bold py-2.5 rounded-xl text-sm hover:bg-earth-dark transition">
+                    Continuar
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREEN 6: RESULTS & CERTIFICATE -->
+        <section id="screen-results" class="hidden space-y-4">
+            <div id="certificate-card" class="bg-white rounded-2xl p-5 shadow-md border-4 border-amber-700/30 text-center space-y-4 relative overflow-hidden">
+                <div class="absolute -top-6 -right-6 w-20 h-20 bg-amber-100 rounded-full opacity-50"></div>
+                
+                <div class="flex justify-center items-center gap-1 text-amber-800">
+                    <i data-lucide="award" class="w-8 h-8"></i>
+                </div>
+
+                <div>
+                    <span class="text-[10px] font-bold text-amber-800 tracking-widest uppercase">Certificado de Aprovechamiento</span>
+                    <h2 class="text-xl font-black text-earth-dark uppercase mt-0.5">Génesis de Suelos</h2>
+                    <p class="text-[11px] text-gray-500">Otorgado a:</p>
+                    <p id="cert-student-name" class="text-lg font-extrabold text-amber-900 border-b-2 border-amber-200 inline-block px-4 py-0.5 my-1">Nombre Estudiante</p>
+                    <p id="cert-student-course" class="text-xs text-gray-600">Curso: -</p>
+                </div>
+
+                <!-- Medal & Badge -->
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 space-y-1">
+                    <span class="text-[10px] font-bold text-amber-800 uppercase block">Insignia Alcanzada</span>
+                    <p id="cert-badge-title" class="text-base font-extrabold text-earth-clay">Edafólogo Promesa</p>
+                    <p id="cert-score-detail" class="text-xs text-gray-700 font-semibold">Puntuación: 0 pts | Aciertos: 0%</p>
+                </div>
+
+                <!-- Errors Summary -->
+                <div class="text-left bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1.5 text-xs">
+                    <span class="font-bold text-earth-dark block text-[11px]">Resumen para Refuerzo:</span>
+                    <div id="cert-error-list" class="space-y-1 text-[11px] text-gray-600 max-h-28 overflow-y-auto pr-1">
+                        <p class="text-emerald-700 font-medium">¡Sin errores registrados! Excelente dominio conceptual.</p>
+                    </div>
+                </div>
+
+                <div class="text-[9px] text-gray-400">Fecha de emisión: <span id="cert-date">--/--/----</span></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="space-y-2">
+                <button onclick="copyReportToClipboard()" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-xl text-xs shadow flex items-center justify-center gap-2">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                    <span>Copiar Reporte Texto (para enviar al docente)</span>
+                </button>
+                <button onclick="resetGame()" class="w-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Reiniciar Juego / Intentar de nuevo</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-earth-dark text-amber-200/60 text-[10px] text-center py-2 border-t border-amber-950">
+        Edafología Interactiva • Génesis y Morfología de Suelos
+    </footer>
+
+    <!-- Game Logic JavaScript -->
+    <script>
+        // Global State
+        let state = {
+            studentName: '',
+            courseName: '',
+            score: 0,
+            currentLevel: 1,
+            level1Index: 0,
+            level2Index: 0,
+            level3Index: 0,
+            errors: [],
+            totalQuestionsAttempted: 0,
+            totalCorrect: 0,
+            timer: null,
+            timeLeft: 15,
+            completedLevels: { 1: false, 2: false, 3: false }
+        };
+
+        // Datasets
+        const level1Data = [
+            {
+                text: "Acumulación de hojarasca y residuos vegetales en la superficie del suelo.",
+                correct: "Adición",
+                explanation: "Es una ADICIÓN porque ingresa material orgánico proveniente de la vegetación externa al sistema del perfil."
+            },
+            {
+                text: "Lixiviación o lavado de nitratos debido a la infiltración profunda de agua de lluvia.",
+                correct: "Pérdida",
+                explanation: "Es una PÉRDIDA ya que los nutrientes solubles son arrastrados fuera del alcance del perfil aprovechable."
+            },
+            {
+                text: "Eluviación de arcillas desde el horizonte A y su posterior acumulación (iluviación) en el horizonte B.",
+                correct: "Translocación",
+                explanation: "Es una TRANSLOCACIÓN pues implica el transporte físico de partículas de arcilla de un horizonte a otro sin salir del perfil."
+            },
+            {
+                text: "Meteorización química de feldespatos primarios transformándose en minerales arcillosos secundarios (caolinita).",
+                correct: "Transformación",
+                explanation: "Es una TRANSFORMACIÓN porque cambia la naturaleza mineralógica y química del componente dentro del suelo."
+            },
+            {
+                text: "Erosión hídrica superficial que arrastra la capa superior fértil del suelo.",
+                correct: "Pérdida",
+                explanation: "Es una PÉRDIDA directa de masa física de suelo por acción del agua de escorrentía."
+            },
+            {
+                text: "Depósito de cenizas volcánicas tras una erupción en la región.",
+                correct: "Adición",
+                explanation: "Es una ADICIÓN de nuevos minerales no consolidados aportados externamente al horizonte superior."
+            },
+            {
+                text: "Proceso de humificación donde la materia orgánica fresca se convierte en humus estable.",
+                correct: "Transformación",
+                explanation: "Es una TRANSFORMACIÓN bioquímica de la estructura orgánica simple a macromoléculas húmicas."
+            },
+            {
+                text: "Ascenso capilar de sales solubles hacia la superficie en zonas áridas.",
+                correct: "Translocación",
+                explanation: "Es una TRANSLOCACIÓN vertical ascendente guiada por la evaporación y capilaridad del agua."
+            }
+        ];
+
+        const level2Data = [
+            {
+                desc: "Lluvia intensa arrastrando nutrientes solubles hacia el manto freático profundo.",
+                animHtml: `
+                    <div class="absolute inset-x-0 top-0 flex justify-around">
+                        <i data-lucide="droplet" class="w-4 h-4 text-blue-400 rain-drop"></i>
+                        <i data-lucide="droplet" class="w-4 h-4 text-blue-400 rain-drop" style="animation-delay: 0.3s"></i>
+                        <i data-lucide="droplet" class="w-4 h-4 text-blue-400 rain-drop" style="animation-delay: 0.6s"></i>
+                    </div>`,
+                correct: "Pérdida",
+                explanation: "Se trata de lixiviación / lavado intenso, una PÉRDIDA nula o salida de solutos del perfil."
+            },
+            {
+                desc: "Caída continua de hojas secas y ramas formando la capa de mantillo en la superficie.",
+                animHtml: `
+                    <div class="absolute inset-x-0 top-0 flex justify-center space-x-6">
+                        <i data-lucide="leaf" class="w-5 h-5 text-amber-500 leaf-drop"></i>
+                        <i data-lucide="leaf" class="w-5 h-5 text-emerald-600 leaf-drop" style="animation-delay: 0.8s"></i>
+                    </div>`,
+                correct: "Adición",
+                explanation: "Aporte externo continuo de biomasa orgánica al horizonte O, configurando una ADICIÓN."
+            },
+            {
+                desc: "Movimiento descendente de finas partículas de arcilla desde A hacia B (Eluviación/Iluviación).",
+                animHtml: `
+                    <div class="absolute top-1/4 inset-x-0 flex justify-center">
+                        <div class="w-3 h-3 rounded-full bg-amber-600 translocate-anim"></div>
+                    </div>`,
+                correct: "Translocación",
+                explanation: "Movilización interna de minerales arcillosos entre horizontes sin abandono del perfil: TRANSLOCACIÓN."
+            },
+            {
+                desc: "Alteración de la roca madre por hidrólisis y oxidación creando arcillas secundarias in situ.",
+                animHtml: `
+                    <div class="absolute bottom-2 inset-x-0 flex justify-center">
+                        <i data-lucide="sparkles" class="w-6 h-6 text-amber-400 transform-anim"></i>
+                    </div>`,
+                correct: "Transformación",
+                explanation: "Cambio de fase mineralógica (meteorización primaria a secundaria): TRANSFORMACIÓN."
+            },
+            {
+                desc: "Gaseificación y volatilización de nitrógeno en forma de amoniaco hacia la atmósfera.",
+                animHtml: `
+                    <div class="absolute top-4 inset-x-0 flex justify-center">
+                        <i data-lucide="wind" class="w-6 h-6 text-gray-300 animate-bounce"></i>
+                    </div>`,
+                correct: "Pérdida",
+                explanation: "Escape de elementos gaseosos desde el sistema suelo hacia la atmósfera: PÉRDIDA."
+            }
+        ];
+
+        const level3Data = [
+            {
+                q: "¿Qué proceso ocurre cuando el agua de escorrentía remueve la capa A fértil?",
+                options: ["Adición", "Pérdida", "Translocación", "Transformación"],
+                correct: "Pérdida",
+                exp: "La erosión remueve masa física del suelo, constituyendo una Pérdida."
+            },
+            {
+                q: "La quelación y podsolización que mueven Hierro y Aluminio al horizonte B es una...",
+                options: ["Adición", "Transformación", "Translocación", "Pérdida"],
+                correct: "Translocación",
+                exp: "Es una Translocación por transporte de complejos organometálicos dentro del perfil."
+            },
+            {
+                q: "La fijación biológica de nitrógeno atmosférico por bacterias simbióticas representa una...",
+                options: ["Adición", "Pérdida", "Transformación", "Translocación"],
+                correct: "Adición",
+                exp: "Introduce Nitrógeno del aire al suelo, siendo una Adición de elementos."
+            },
+            {
+                q: "La mineralización de la materia orgánica produciendo CO2 y nutrientes inorgánicos es...",
+                options: ["Translocación", "Transformación", "Adición", "Pérdida"],
+                correct: "Transformación",
+                exp: "Descompone químicamente compuestos orgánicos en compuestos inorgánicos (Transformación)."
+            },
+            {
+                q: "El aporte de sedimentos aluviales por la crecida de un río se clasifica como...",
+                options: ["Adición", "Translocación", "Pérdida", "Transformación"],
+                correct: "Adición",
+                exp: "Entrada de sedimentos depositados desde el exterior del sitio."
+            }
+        ];
+
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            document.getElementById('form-register').addEventListener('submit', (e) => {
+                e.preventDefault();
+                state.studentName = document.getElementById('input-name').value.trim();
+                state.courseName = document.getElementById('input-course').value.trim();
+                
+                document.getElementById('header-user-name').innerText = state.studentName;
+                document.getElementById('user-badge').classList.remove('hidden');
+
+                showScreen('screen-hub');
+            });
+        });
+
+        // Navigation
+        function showScreen(id) {
+            ['screen-welcome', 'screen-hub', 'screen-level-1', 'screen-level-2', 'screen-level-3', 'screen-results'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function startLevel(lvl) {
+            state.currentLevel = lvl;
+            if (lvl === 1) {
+                state.level1Index = 0;
+                renderLevel1();
+                showScreen('screen-level-1');
+            } else if (lvl === 2) {
+                state.level2Index = 0;
+                renderLevel2();
+                showScreen('screen-level-2');
+            } else if (lvl === 3) {
+                state.level3Index = 0;
+                renderLevel3();
+                showScreen('screen-level-3');
+            }
+        }
+
+        // LEVEL 1 LOGIC
+        function renderLevel1() {
+            if (state.level1Index >= level1Data.length) {
+                state.completedLevels[1] = true;
+                updateHubStatus();
+                showModal(true, "¡Nivel 1 Completado!", "Has demostrado excelente criterio para clasificar los eventos pedogenéticos.", () => {
+                    showScreen('screen-hub');
+                });
+                return;
+            }
+
+            const item = level1Data[state.level1Index];
+            document.getElementById('lvl1-progress').innerText = `${state.level1Index + 1} / ${level1Data.length}`;
+            document.getElementById('scenario-text').innerText = item.text;
+            lucide.createIcons();
+        }
+
+        function classifyScenario(selectedProcess) {
+            const item = level1Data[state.level1Index];
+            state.totalQuestionsAttempted++;
+            const isCorrect = (selectedProcess === item.correct);
+
+            if (isCorrect) {
+                state.score += 15;
+                state.totalCorrect++;
+            } else {
+                state.errors.push({
+                    level: "Nivel 1",
+                    item: item.text,
+                    userAns: selectedProcess,
+                    correctAns: item.correct
+                });
+            }
+
+            updateScoreHeader();
+            showModal(isCorrect, isCorrect ? "¡Correcto!" : "Respuesta Incorrecta", item.explanation, () => {
+                state.level1Index++;
+                renderLevel1();
+            });
+        }
+
+        // LEVEL 2 LOGIC
+        function renderLevel2() {
+            if (state.level2Index >= level2Data.length) {
+                state.completedLevels[2] = true;
+                updateHubStatus();
+                showModal(true, "¡Nivel 2 Completado!", "Has analizado correctamente la dinámica visual del perfil edáfico.", () => {
+                    showScreen('screen-hub');
+                });
+                return;
+            }
+
+            const item = level2Data[state.level2Index];
+            document.getElementById('lvl2-progress').innerText = `${state.level2Index + 1} / ${level2Data.length}`;
+            document.getElementById('sim-description').innerText = item.desc;
+            
+            const overlay = document.getElementById('sim-animation-overlay');
+            overlay.innerHTML = item.animHtml;
+            lucide.createIcons();
+        }
+
+        function checkSimAnswer(selectedProcess) {
+            const item = level2Data[state.level2Index];
+            state.totalQuestionsAttempted++;
+            const isCorrect = (selectedProcess === item.correct);
+
+            if (isCorrect) {
+                state.score += 20;
+                state.totalCorrect++;
+            } else {
+                state.errors.push({
+                    level: "Nivel 2",
+                    item: item.desc,
+                    userAns: selectedProcess,
+                    correctAns: item.correct
+                });
+            }
+
+            updateScoreHeader();
+            showModal(isCorrect, isCorrect ? "¡Excelente Observación!" : "Atención Edafólogo", item.explanation, () => {
+                state.level2Index++;
+                renderLevel2();
+            });
+        }
+
+        // LEVEL 3 LOGIC
+        function renderLevel3() {
+            if (state.level3Index >= level3Data.length) {
+                clearInterval(state.timer);
+                state.completedLevels[3] = true;
+                updateHubStatus();
+                showModal(true, "¡Quiz Finalizado!", "Has completado el desafío contrarreloj con éxito.", () => {
+                    showScreen('screen-hub');
+                });
+                return;
+            }
+
+            const item = level3Data[state.level3Index];
+            document.getElementById('lvl3-progress').innerText = `${state.level3Index + 1} / ${level3Data.length}`;
+            document.getElementById('quiz-question').innerText = item.q;
+
+            const optsContainer = document.getElementById('quiz-options');
+            optsContainer.innerHTML = '';
+
+            item.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left p-3 rounded-xl border-2 border-stone-200 hover:border-amber-500 font-medium text-xs text-gray-800 transition active:scale-98';
+                btn.innerText = opt;
+                btn.onclick = () => answerQuiz(opt);
+                optsContainer.appendChild(btn);
+            });
+
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(state.timer);
+            state.timeLeft = 15;
+            document.getElementById('time-left').innerText = state.timeLeft;
+
+            state.timer = setInterval(() => {
+                state.timeLeft--;
+                document.getElementById('time-left').innerText = state.timeLeft;
+
+                if (state.timeLeft <= 0) {
+                    clearInterval(state.timer);
+                    answerQuiz(null); // Timeout
+                }
+            }, 1000);
+        }
+
+        function answerQuiz(selectedOpt) {
+            clearInterval(state.timer);
+            const item = level3Data[state.level3Index];
+            state.totalQuestionsAttempted++;
+            const isCorrect = (selectedOpt === item.correct);
+
+            if (isCorrect) {
+                state.score += 25 + state.timeLeft; // Bonus for speed
+                state.totalCorrect++;
+            } else {
+                state.errors.push({
+                    level: "Nivel 3",
+                    item: item.q,
+                    userAns: selectedOpt || 'Tiempo agotado',
+                    correctAns: item.correct
+                });
+            }
+
+            updateScoreHeader();
+            showModal(isCorrect, isCorrect ? "¡Respuesta Precisa!" : "Tiempo o Respuesta Errónea", item.exp, () => {
+                state.level3Index++;
+                renderLevel3();
+            });
+        }
+
+        // MODAL FEEDBACK SYSTEM
+        function showModal(isCorrect, title, expText, callback) {
+            const modal = document.getElementById('modal-feedback');
+            const iconContainer = document.getElementById('feedback-icon-container');
+            const icon = document.getElementById('feedback-icon');
+            const titleEl = document.getElementById('feedback-title');
+            const textEl = document.getElementById('feedback-text');
+
+            if (isCorrect) {
+                iconContainer.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-emerald-100 text-emerald-600";
+                icon.setAttribute('data-lucide', 'check-circle');
+            } else {
+                iconContainer.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-rose-100 text-rose-600";
+                icon.setAttribute('data-lucide', 'alert-circle');
+            }
+
+            titleEl.innerText = title;
+            textEl.innerText = expText;
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+
+            window.nextQuestionCallback = () => {
+                modal.classList.add('hidden');
+                if (callback) callback();
+            };
+        }
+
+        function nextQuestion() {
+            if (window.nextQuestionCallback) window.nextQuestionCallback();
+        }
+
+        // SCORE & PROGRESS UPDATES
+        function updateScoreHeader() {
+            document.getElementById('header-score').innerText = `${state.score} pts`;
+        }
+
+        function updateHubStatus() {
+            for (let i = 1; i <= 3; i++) {
+                const statusEl = document.getElementById(`lvl${i}-status`);
+                const badgeEl = document.getElementById(`lvl${i}-badge`);
+                if (state.completedLevels[i]) {
+                    statusEl.innerText = "Completado";
+                    statusEl.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
+                    badgeEl.className = "w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white shrink-0 font-bold text-lg";
+                }
+            }
+        }
+
+        // RESULTS & CERTIFICATE GENERATION
+        function showResultsScreen() {
+            document.getElementById('cert-student-name').innerText = state.studentName || "Estudiante";
+            document.getElementById('cert-student-course').innerText = `Curso / Sección: ${state.courseName || "General"}`;
+
+            const accuracy = state.totalQuestionsAttempted > 0 
+                ? Math.round((state.totalCorrect / state.totalQuestionsAttempted) * 100) 
+                : 0;
+
+            document.getElementById('cert-score-detail').innerText = `Puntuación: ${state.score} pts | Aciertos: ${accuracy}%`;
+
+            // Badge determination
+            let badgeTitle = "Edafólogo Promesa";
+            if (accuracy >= 85 && state.score >= 250) {
+                badgeTitle = "🏆 Especialista en Génesis de Suelos";
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            } else if (accuracy >= 65) {
+                badgeTitle = "🌿 Maestro del Perfil Edáfico";
+            }
+            document.getElementById('cert-badge-title').innerText = badgeTitle;
+
+            // Render error list
+            const errContainer = document.getElementById('cert-error-list');
+            if (state.errors.length === 0) {
+                errContainer.innerHTML = `<p class="text-emerald-700 font-semibold">¡Excelente desempeño! No cometiste ningún error en los ejercicios.</p>`;
+            } else {
+                errContainer.innerHTML = state.errors.map(e => `
+                    <div class="border-b border-stone-200 pb-1">
+                        <span class="font-bold text-amber-900">[${e.level}]</span> ${e.item}<br>
+                        <span class="text-red-600">Tu resp: ${e.userAns}</span> | <span class="text-emerald-700 font-semibold">Correcta: ${e.correctAns}</span>
+                    </div>
+                `).join('');
+            }
+
+            // Date
+            const today = new Date();
+            document.getElementById('cert-date').innerText = today.toLocaleDateString('es-ES');
+
+            showScreen('screen-results');
+            lucide.createIcons();
+        }
+
+        function copyReportToClipboard() {
+            const accuracy = state.totalQuestionsAttempted > 0 
+                ? Math.round((state.totalCorrect / state.totalQuestionsAttempted) * 100) 
+                : 0;
+
+            let reportText = `=== REPORTE DE EVALUACIÓN: GÉNESIS DE SUELOS ===\n`;
+            reportText += `Estudiante: ${state.studentName}\n`;
+            reportText += `Curso/Sección: ${state.courseName}\n`;
+            reportText += `Puntuación Total: ${state.score} pts\n`;
+            reportText += `Porcentaje de Aciertos: ${accuracy}%\n`;
+            reportText += `Insignia Obtenida: ${document.getElementById('cert-badge-title').innerText}\n`;
+            reportText += `Fecha: ${document.getElementById('cert-date').innerText}\n\n`;
+            reportText += `--- RESUMEN DE ERRORES/REFUERZO ---\n`;
+            
+            if (state.errors.length === 0) {
+                reportText += `Sin errores registrados.\n`;
+            } else {
+                state.errors.forEach((e, idx) => {
+                    reportText += `${idx+1}. [${e.level}] ${e.item} | Tu resp: ${e.userAns} | Correcta: ${e.correctAns}\n`;
+                });
+            }
+
+            navigator.clipboard.writeText(reportText).then(() => {
+                alert("¡Reporte copiado al portapapeles! Puedes pegarlo en WhatsApp, correo o la plataforma del docente.");
+            }).catch(() => {
+                alert("No se pudo copiar automáticamente. Puedes tomar una captura de pantalla del certificado.");
+            });
+        }
+
+        function resetGame() {
+            state.score = 0;
+            state.errors = [];
+            state.totalQuestionsAttempted = 0;
+            state.totalCorrect = 0;
+            state.completedLevels = { 1: false, 2: false, 3: false };
+            updateScoreHeader();
+            updateHubStatus();
+            showScreen('screen-hub');
+        }
+    </script>
+</body>
+</html>
